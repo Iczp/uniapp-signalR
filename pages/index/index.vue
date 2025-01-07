@@ -1,8 +1,12 @@
 <template>
 	<view class="content" @click="setTitle">
 		<image class="logo" src="/static/logo.png"></image>
+		<view :loginToken="accessToken" :change:loginToken="signalR.setLoginToken" :title="title"
+			:change:title="signalR.changeTitle">
+
+		</view>
 		<view class="text-area">
-			<text class="title" :title="title" :change:title="signalR.changeTitle">{{title}}</text>
+			<text class="title">{{title}}</text>
 		</view>
 	</view>
 </template>
@@ -11,6 +15,7 @@
 		data() {
 			return {
 				num: 0,
+				accessToken: '123',
 				title: 'signalR'
 			}
 		},
@@ -22,10 +27,7 @@
 			},
 			test(e) {
 				console.log('methods test', e)
-				uni.showToast({
-					title: `signalR:${e}`,
-					icon: 'none'
-				})
+				uni.showToast({ title: `signalR:${e}`, icon: 'none' })
 			}
 		},
 		onLoad() {
@@ -55,60 +57,67 @@
 		data() {
 			return {
 				connection: null,
+				loginToken: ''
 			}
 		},
 		methods: {
 			async changeTitle(newValue, oldValue, ownerInstance, instance) {
 				console.log('changeTitle', newValue, oldValue, ownerInstance, instance)
 				if (this.connection) {
-					await this.connection.invoke("SendMessageAsync", "123456", newValue);
+					await this.send(newValue);
 				} else {
 					console.error('this.connection:', this.connection)
 				}
 			},
-			emit(e) {
-				console.log('emit', e, this.$ownerInstance)
-				this.$ownerInstance.callMethod('test', e)
+			setLoginToken(newValue, oldValue, ownerInstance, instance) {
+				this.loginToken = newValue;
+				console.log('setLoginToken', newValue, oldValue, ownerInstance, instance)
+			},
+
+			receiveMessage(msg) {
+				console.log("ReceiveMessage", msg);
+				this.$ownerInstance.callMethod('test', msg)
+			},
+			onreconnected(connectionId) {
+				console.log("onreconnected", connectionId);
+			},
+			onreconnecting(connectionId) {
+				console.log("onreconnecting", connectionId);
+			},
+			async send(msg) {
+				console.log("send:", msg);
+				await this.connection.invoke("SendMessageAsync", "123456", msg);
+			},
+			async onclose(error) {
+				console.log("onclose", error);
+				await this.start();
+			},
+			async start() {
+				try {
+					const connection = this.connection;
+					await connection.start();
+					console.assert(connection.state === signalR.HubConnectionState.Connected);
+					await this.send(`'${connection.connectionId}' SignalR Connected.`);
+				} catch (err) {
+					console.assert(connection.state === signalR.HubConnectionState.Disconnected);
+					console.error('[start error]', err);
+					setTimeout(() => this.start(), 5000);
+				}
 			},
 			async initSignalR() {
 				console.log('initSignalR')
 				signalR = window.signalR
-				console.log('window.signalR', window.signalR)
+				console.log('window.signalR', signalR)
 				const connection = this.connection = new signalR.HubConnectionBuilder()
-					.withUrl("http://10.0.5.20:8070/signalr-hubs/chat")
+					.withUrl("http://10.0.5.20:8070/signalr-hubs/chat", { accessTokenFactory: () => this.loginToken })
 					// .withAutomaticReconnect()
 					.configureLogging(signalR.LogLevel.Information)
 					.build();
-
-				async function start() {
-					try {
-						await connection.start();
-						console.assert(connection.state === signalR.HubConnectionState.Connected);
-						console.log("SignalR Connected.");
-						await connection.invoke("SendMessageAsync", "123456", "555");
-					} catch (err) {
-						console.assert(connection.state === signalR.HubConnectionState.Disconnected);
-						console.error('[start error]', err);
-						setTimeout(() => start(), 5000);
-					}
-				};
-				connection.on("ReceiveMessage", (msg) => {
-					console.log("ReceiveMessage", msg);
-					this.emit(msg)
-				})
-				connection.onreconnected((connectionId) => {
-					console.log("onreconnected", connectionId);
-				})
-				connection.onreconnecting((connectionId) => {
-					console.log("onreconnecting", connectionId);
-				})
-				connection.onclose(async error => {
-					console.log("onclose", error);
-					await start();
-				});
-
-				await start();
-
+				connection.on("ReceiveMessage", this.receiveMessage)
+				connection.onreconnected(this.onreconnected)
+				connection.onreconnecting(this.onreconnecting)
+				connection.onclose(this.onclose);
+				await this.start();
 			},
 		}
 	}

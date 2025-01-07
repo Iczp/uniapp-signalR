@@ -1,0 +1,134 @@
+<template>
+	<view class="content" @click="setTitle">
+		<image class="logo" src="/static/logo.png"></image>
+		<view class="text-area">
+			<text class="title" :title="title" :change:title="signalR.changeTitle">{{title}}</text>
+		</view>
+	</view>
+</template>
+<script>
+	export default {
+		data() {
+			return {
+				num: 0,
+				title: 'signalR'
+			}
+		},
+		methods: {
+			setTitle() {
+				this.num++;
+				this.title = `signalR-${this.num}`
+				console.log('setTitle-')
+				this.signalR.send(this.title)
+			},
+			test(e) {
+				console.log('methods test', e)
+				uni.showToast({
+					title: `signalR:${e}`,
+					icon: 'none'
+				})
+			}
+		},
+		onLoad() {
+
+		}
+	}
+</script>
+<script module="signalR" lang="renderjs">
+	console.log('renderjs -signalR')
+	let signalR;
+	export default {
+		mounted() {
+			if (typeof window.signalR === 'function') {
+				this.initSignalR()
+			} else {
+				// 动态引入较大类库避免影响页面展示
+				const script = document.createElement('script')
+				// view 层的页面运行在 www 根目录，其相对路径相对于 www 计算
+				script.src = 'static/signalr.min.js'
+				script.onload = this.initSignalR.bind(this)
+				document.head.appendChild(script)
+				console.log('appendChild', 'static/signalr.min.js')
+			}
+
+			// ...
+		},
+		data() {
+			return {
+				title: 'test-signalR-renderjs',
+				connection: null,
+			}
+		},
+		methods: {
+			async changeTitle(newValue, oldValue, ownerInstance, instance) {
+				console.log('changeTitle', newValue, oldValue, ownerInstance, instance)
+				if (this.connection) {
+					await this.connection.invoke("SendMessageAsync", "123456", newValue);
+				}
+
+			},
+			send(e) {
+				console.log('signalR send:', e)
+			},
+			emit(e) {
+				console.log('emit', e, this.$ownerInstance)
+				this.$ownerInstance.callMethod('test', e)
+				this.$ownerInstance.$vm.$emit('receivemessage', 'ddd')
+
+			},
+			async initSignalR() {
+				console.log('initSignalR')
+				signalR = window.signalR
+				console.log('window.signalR', window.signalR)
+				const connection = this.connection = new signalR.HubConnectionBuilder()
+					.withUrl("http://10.0.5.20:8070/signalr-hubs/chat")
+					.configureLogging(signalR.LogLevel.Information)
+					.build();
+				try {
+					connection.on("receivemessage", e => {
+						console.log("receivemessage", e);
+						console.log("receivemessage:uni", uni);
+						// uni.$emit('receivemessage', e)
+						this.emit(e)
+					})
+					await connection.start();
+					console.log("SignalR Connected.");
+					await connection.invoke("SendMessageAsync", "123456", "555");
+				} catch (err) {
+					console.log('Err:', err);
+					// setTimeout(start, 5000);
+				}
+
+			},
+		}
+	}
+</script>
+
+
+<style>
+	.content {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.logo {
+		height: 200rpx;
+		width: 200rpx;
+		margin-top: 200rpx;
+		margin-left: auto;
+		margin-right: auto;
+		margin-bottom: 50rpx;
+	}
+
+	.text-area {
+		display: flex;
+		justify-content: center;
+	}
+
+	.title {
+		font-size: 36rpx;
+		color: #8f8f94;
+	}
+</style>

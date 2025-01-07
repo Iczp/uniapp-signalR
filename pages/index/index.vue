@@ -18,8 +18,7 @@
 			setTitle() {
 				this.num++;
 				this.title = `signalR-${this.num}`
-				console.log('setTitle-')
-				this.signalR.send(this.title)
+				console.log('setTitle:', this.title)
 			},
 			test(e) {
 				console.log('methods test', e)
@@ -48,14 +47,13 @@
 				script.src = 'static/signalr.min.js'
 				script.onload = this.initSignalR.bind(this)
 				document.head.appendChild(script)
-				console.log('appendChild', 'static/signalr.min.js')
+				console.log('appendChild script.src:', script.src)
 			}
 
 			// ...
 		},
 		data() {
 			return {
-				title: 'test-signalR-renderjs',
 				connection: null,
 			}
 		},
@@ -64,17 +62,13 @@
 				console.log('changeTitle', newValue, oldValue, ownerInstance, instance)
 				if (this.connection) {
 					await this.connection.invoke("SendMessageAsync", "123456", newValue);
+				} else {
+					console.error('this.connection:', this.connection)
 				}
-
-			},
-			send(e) {
-				console.log('signalR send:', e)
 			},
 			emit(e) {
 				console.log('emit', e, this.$ownerInstance)
 				this.$ownerInstance.callMethod('test', e)
-				this.$ownerInstance.$vm.$emit('receivemessage', 'ddd')
-
 			},
 			async initSignalR() {
 				console.log('initSignalR')
@@ -82,22 +76,38 @@
 				console.log('window.signalR', window.signalR)
 				const connection = this.connection = new signalR.HubConnectionBuilder()
 					.withUrl("http://10.0.5.20:8070/signalr-hubs/chat")
+					// .withAutomaticReconnect()
 					.configureLogging(signalR.LogLevel.Information)
 					.build();
-				try {
-					connection.on("receivemessage", e => {
-						console.log("receivemessage", e);
-						console.log("receivemessage:uni", uni);
-						// uni.$emit('receivemessage', e)
-						this.emit(e)
-					})
-					await connection.start();
-					console.log("SignalR Connected.");
-					await connection.invoke("SendMessageAsync", "123456", "555");
-				} catch (err) {
-					console.log('Err:', err);
-					// setTimeout(start, 5000);
-				}
+
+				async function start() {
+					try {
+						await connection.start();
+						console.assert(connection.state === signalR.HubConnectionState.Connected);
+						console.log("SignalR Connected.");
+						await connection.invoke("SendMessageAsync", "123456", "555");
+					} catch (err) {
+						console.assert(connection.state === signalR.HubConnectionState.Disconnected);
+						console.error('[start error]', err);
+						setTimeout(() => start(), 5000);
+					}
+				};
+				connection.on("ReceiveMessage", (msg) => {
+					console.log("ReceiveMessage", msg);
+					this.emit(msg)
+				})
+				connection.onreconnected((connectionId) => {
+					console.log("onreconnected", connectionId);
+				})
+				connection.onreconnecting((connectionId) => {
+					console.log("onreconnecting", connectionId);
+				})
+				connection.onclose(async error => {
+					console.log("onclose", error);
+					await start();
+				});
+
+				await start();
 
 			},
 		}

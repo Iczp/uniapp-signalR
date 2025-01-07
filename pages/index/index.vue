@@ -3,10 +3,9 @@
 		<image class="logo" src="/static/logo.png"></image>
 		<view :loginToken="accessToken" :change:loginToken="signalR.setLoginToken" :title="title"
 			:change:title="signalR.changeTitle">
-
 		</view>
 		<view class="text-area">
-			<text class="title">{{title}}</text>
+			<text class="title">{{ title }}</text>
 		</view>
 	</view>
 </template>
@@ -16,24 +15,22 @@
 			return {
 				num: 0,
 				accessToken: '123',
-				title: 'signalR'
-			}
+				title: 'signalR',
+			};
 		},
 		methods: {
 			setTitle() {
 				this.num++;
-				this.title = `signalR-${this.num}`
-				console.log('setTitle:', this.title)
+				this.title = `signalR-${this.num}`;
+				console.log('setTitle:', this.title);
 			},
 			test(e) {
-				console.log('methods test', e)
-				uni.showToast({ title: `signalR:${e}`, icon: 'none' })
-			}
+				console.log('methods test', e);
+				uni.showToast({ title: `signalR:${e}`, icon: 'none' });
+			},
 		},
-		onLoad() {
-
-		}
-	}
+		onLoad() {},
+	};
 </script>
 <script module="signalR" lang="renderjs">
 	console.log('renderjs -signalR')
@@ -41,8 +38,11 @@
 	let lockResolver;
 	const isWebLockEnabled = navigator && navigator.locks && navigator.locks.request
 	if (isWebLockEnabled) {
+		// 使用 Web Lock 将选项卡保持为唤醒状态，并避免意外的连接关闭。
 		const promise = new Promise((res) => lockResolver = res);
 		navigator.locks.request('signalR_unique_lock_name', { mode: "shared" }, () => promise);
+		// 关闭连接时，通过调用 lockResolver() 释放锁定。 释放锁定时，选项卡可进入睡眠状态
+		// lockResolver?.call(this)
 	}
 	console.log(' Web Lock enabled:', !!isWebLockEnabled, lockResolver)
 	export default {
@@ -129,7 +129,6 @@
 		}
 	}
 </script>
-
 
 <style>
 	.content {

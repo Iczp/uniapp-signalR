@@ -1,4 +1,22 @@
 {
+  "name": "uniapp-signalr",
+  "version": "0.0.48",
+  "description": "在Uniapp中renderjs使用signalR",
+  "author": "zhongpei <1000@intry.cn>",
+  "email": "1000@intry.cn",
+  "website": "https://iczp.net",
+  "private": true,
+  "license": "MIT",
+  "keywords": [
+    "uniapp",
+    "netcore",
+    "renderjs",
+    "signalr"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iczp/uniapp-signalr.git"
+  },
   "dependencies": {
     "@microsoft/signalr": "^8.0.7"
   }

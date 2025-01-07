@@ -38,6 +38,13 @@
 <script module="signalR" lang="renderjs">
 	console.log('renderjs -signalR')
 	let signalR;
+	let lockResolver;
+	const isWebLockEnabled = navigator && navigator.locks && navigator.locks.request
+	if (isWebLockEnabled) {
+		const promise = new Promise((res) => lockResolver = res);
+		navigator.locks.request('signalR_unique_lock_name', { mode: "shared" }, () => promise);
+	}
+	console.log(' Web Lock enabled:', !!isWebLockEnabled, lockResolver)
 	export default {
 		mounted() {
 			if (typeof window.signalR === 'function') {

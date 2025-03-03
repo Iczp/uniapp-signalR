@@ -1,6 +1,6 @@
 # Uniapp 中使用 signalR
 
-
+后端项目： IczpNet.Chat
 
 支持： App端，[H5]()
 

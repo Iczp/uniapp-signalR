@@ -106,7 +106,6 @@
 					console.assert(connection.state === signalR.HubConnectionState.Connected);
 					await this.send(`'${connection.connectionId}' SignalR Connected.`);
 				} catch (err) {
-					console.assert(connection.state === signalR.HubConnectionState.Disconnected);
 					console.error('[start error]', err);
 					setTimeout(() => this.start(), 5000);
 				}
